@@ -511,12 +511,37 @@ namespace ProtoFFI
 
         private object ToIDictionary(StackValue dsObject, ProtoCore.Runtime.Context context, Interpreter dsi, System.Type expectedType)
         {
+            var d = primitiveMarshaler.GetDictionary(dsObject);
+
+            return ToIDictionary(d);
+        }
+
+        private IDictionary ToIDictionary(Dictionary d)
+        {
             var targetDict = Activator.CreateInstance(typeof(Dictionary<object, object>)) as IDictionary;
 
-            var d = primitiveMarshaler.GetDictionary(dsObject);
             foreach (var key in d.Keys)
             {
-                targetDict[key] = d.ValueAtKey(key);
+                var value = d.ValueAtKey(key);
+
+                if (value is Dictionary)
+                {
+                    value = ToIDictionary(value as Dictionary);
+                }
+                else if (value is IList)
+                {
+                    var list = value as IList;
+                    
+                    for (int i = 0; i < list.Count; ++i)
+                    {
+                        if (list[i] is Dictionary)
+                        {
+                            list[i] = ToIDictionary(list[i] as Dictionary);
+                        }
+                    }
+                }
+
+                targetDict[key] = value;
             }
 
             return targetDict;
